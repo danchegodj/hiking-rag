@@ -21,6 +21,21 @@ st.set_page_config(
     layout="wide",
 )
 
+st.markdown("""
+<style>
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+div[data-testid="stMetric"] {
+    background-color: #f8f9fa;
+    border: 1px solid #e6e6e6;
+    padding: 12px;
+    border-radius: 12px;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ──────────────────────────────────────────────────────────────────────
 # YOUR DOCUMENTS — Replace these with your own topic!
 # Each string is one "document" that will be chunked, embedded, and
@@ -427,62 +442,127 @@ def build_vector_store(_documents: tuple):
 # ──────────────────────────────────────────────────────────────────────
 # SIDEBAR
 # ──────────────────────────────────────────────────────────────────────
-st.sidebar.title("Hiking in Slovenia RAG")
-page = st.sidebar.radio("Navigate", ["Home", "Search", "Explore Chunks"])
+st.sidebar.markdown("## Hiking in Slovenia")
+st.sidebar.caption("Semantic search app")
+st.sidebar.markdown("---")
+
+from streamlit_option_menu import option_menu
+
+with st.sidebar:
+    selected = option_menu(
+        menu_title=None,
+        options=["Home", "Search", "Examples", "Explore Chunks", "About"],
+        icons=["house", "search", "lightbulb", "boxes", "info-circle"],
+        default_index=0,
+    )
+
+page = selected
+
+
 
 # ──────────────────────────────────────────────────────────────────────
 # HOME PAGE
 # ──────────────────────────────────────────────────────────────────────
 if page == "Home":
-    st.title("Hiking in Slovenia Knowledge Base")
-    st.markdown("""
-    Welcome! This app lets you **search documents by meaning**, not just keywords.
+    st.title("🥾 Hiking in Slovenia Knowledge Base")
 
-    ### How it works
-    1. **Documents** are split into small chunks
-    2. Each chunk is converted to an **embedding** (a vector of numbers)
-    3. Chunks are stored in a **vector database** (ChromaDB)
-    4. When you search, your query is embedded and compared to all chunks
-    5. The most **semantically similar** chunks are returned
+    col1, col2 = st.columns([2, 1])
 
-    ### Get started
-    - Go to **Search** to ask questions
-    - Go to **Explore Chunks** to see how documents are split
+    with col1:
+        st.markdown("""
+        Explore hiking information about Slovenia using semantic search.  
+        This app helps you find relevant information about mountain ranges, seasons, safety, navigation, trail culture, and practical hiking preparation.
+        """)
 
-    ---
-    *Built with Streamlit, LangChain, and ChromaDB*
-    """)
+        st.subheader("What you can explore")
+        st.markdown("""
+        - Major hiking regions such as the Julian Alps, Karawanks, and Kamnik-Savinja Alps  
+        - Best seasons for different hiking types  
+        - Safety, navigation, and trail markings  
+        - Hut-to-hut hiking, wine-region walks, and long-distance trails  
+        """)
+
+        st.success("Start exploring → Open the **Search** page and ask your question.")
+
+    with col2:
+        st.image("image.jpg", caption="Explore Slovenia", use_container_width=True)
+
+    st.markdown("---")
+    st.caption("Built with Streamlit, LangChain, and ChromaDB")
+
+    vector_store, chunks = build_vector_store(tuple(DOCUMENTS))
+
+    col3, col4, col5 = st.columns(3)
+    col3.metric("Documents", len(DOCUMENTS))
+    col4.metric("Chunk size", 500)
+    col5.metric("Chunk overlap", 50)
 
     st.info(f"Knowledge base contains **{len(DOCUMENTS)} documents**.")
+
 
 
 # ──────────────────────────────────────────────────────────────────────
 # SEARCH PAGE
 # ──────────────────────────────────────────────────────────────────────
 elif page == "Search":
-    st.title("Search Hiking Information")
-    st.markdown("Ask a question about hiking in Slovenia and the app will return the most relevant text passages.")
+    st.title("🔎 Search Hiking Information")
+    st.markdown("""
+    Ask a question about hiking in Slovenia and the app will return the most relevant passages from the knowledge base.
+    """)
+
+    st.info("""
+    Example questions:
+    - What is the best time for hiking in Slovenia?
+    - How do the Julian Alps differ from the Karawanks?
+    - What safety risks should hikers consider in Slovenia?
+    - What does the Knafelc waymark mean?
+    """)
 
     vector_store, chunks = build_vector_store(tuple(DOCUMENTS))
 
-    query = st.text_input(
-        "Your question",
-        placeholder="e.g. What is the best time for hiking in Slovenia?",
-    )
-    num_results = st.slider("Number of results", 1, 10, 3)
+    col1, col2 = st.columns([3, 1])
+
+    with col1:
+        query = st.text_input(
+            "Your question",
+            placeholder="e.g. What is the best time for hiking in Slovenia?",
+        )
+
+    with col2:
+        num_results = st.slider("Results", 1, 10, 3)
 
     if query:
         with st.spinner("Searching..."):
             results = vector_store.similarity_search_with_score(query, k=num_results)
 
         st.subheader(f"Top {len(results)} results")
+
         for i, (doc, score) in enumerate(results, 1):
-            # ChromaDB returns distance; lower = more similar
-            similarity = max(0, 1 - score)  # rough conversion
-            with st.container():
-                st.markdown(f"**Result {i}** — relevance: `{similarity:.2f}`")
-                st.markdown(f"> {doc.page_content}")
-                st.divider()
+            similarity = max(0, 1 - score)
+
+            st.markdown(
+                f"""
+                <div style="
+                    border: 1px solid #d9d9d9;
+                    border-radius: 12px;
+                    padding: 16px;
+                    margin-bottom: 16px;
+                    background-color: #fafafa;
+                ">
+                    <h4 style="margin-top: 0;">Result {i}</h4>
+                    <p style="margin-bottom: 8px;"><strong>Relevance score:</strong> {similarity:.2f}</p>
+                    <p style="margin-bottom: 0;">{doc.page_content}</p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )        
+    
+
+
+    stat1, stat2, stat3 = st.columns(3)
+    stat1.metric("Documents", len(DOCUMENTS))
+    stat2.metric("Chunks", len(chunks))
+    stat3.metric("Query length", len(query) if query else 0)
 
     st.markdown("---")
     st.caption("Powered by all-MiniLM-L6-v2 embeddings + ChromaDB")
@@ -505,7 +585,83 @@ elif page == "Explore Chunks":
     col2.metric("Min chunk size", f"{min(lengths)} chars")
     col3.metric("Max chunk size", f"{max(lengths)} chars")
 
-    st.subheader("All chunks")
-    for i, chunk in enumerate(chunks, 1):
+    st.subheader("Chunk length distribution")
+    st.bar_chart(lengths)
+
+    st.subheader("Filter chunks")
+    keyword = st.text_input(
+        "Enter a keyword to search inside chunks",
+        placeholder="e.g. Alps"
+    )
+
+    filtered_chunks = chunks
+    if keyword:
+        filtered_chunks = [chunk for chunk in chunks if keyword.lower() in chunk.lower()]
+
+    st.write(f"Showing {len(filtered_chunks)} chunk(s)")
+
+    for i, chunk in enumerate(filtered_chunks, 1):
         with st.expander(f"Chunk {i} ({len(chunk)} chars)"):
             st.text(chunk)
+
+# ──────────────────────────────────────────────────────────────────────
+# ABOUT PAGE
+# ──────────────────────────────────────────────────────────────────────
+elif page == "About":
+    st.title("About This App")
+
+    st.markdown("""
+    This application is a semantic search tool focused on hiking in Slovenia.
+
+    It allows users to search information about:
+    - mountain regions
+    - hiking seasons
+    - safety and navigation
+    - trail systems and culture
+
+    ### How it works
+    This app lets you **search documents by meaning**, not just keywords.
+    1. **Documents** are split into small chunks
+    2. Each chunk is converted to an **embedding** (a vector of numbers)
+    3. Chunks are stored in a **vector database** (ChromaDB)
+    4. When you search, your query is embedded and compared to all chunks
+    5. The most **semantically similar** chunks are returned
+
+    ### Technical setup
+    - Embedding model: all-MiniLM-L6-v2  
+    - Vector database: ChromaDB  
+    - Chunking method: RecursiveCharacterTextSplitter  
+    - Chunk size: 500  
+    - Chunk overlap: 50  
+    """)
+
+    
+# ──────────────────────────────────────────────────────────────────────
+# EXAMPLES PAGE
+# ──────────────────────────────────────────────────────────────────────
+
+elif page == "Examples":
+    st.title("Try Example Queries")
+
+    st.markdown("Click a question to test the search system:")
+
+    example_queries = [
+        "What is the best time for hiking in Slovenia?",
+        "Why is Slovenia a good hiking destination?",
+        "How do the Julian Alps differ from the Karawanks?",
+        "What safety risks should hikers consider?",
+        "What does the Knafelc waymark mean?"
+    ]
+
+    vector_store, chunks = build_vector_store(tuple(DOCUMENTS))
+
+    for q in example_queries:
+        if st.button(q):
+            results = vector_store.similarity_search_with_score(q, k=3)
+
+            st.subheader("Results")
+            for i, (doc, score) in enumerate(results, 1):
+                similarity = max(0, 1 - score)
+                st.markdown(f"**Result {i} — {similarity:.2f}**")
+                st.write(doc.page_content)
+                st.divider()
