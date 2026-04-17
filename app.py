@@ -131,7 +131,7 @@ def build_chunks(_documents: tuple):
     from langchain_text_splitters import RecursiveCharacterTextSplitter
 
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=600,
+        chunk_size=500,
         chunk_overlap=50,
         separators=["\n\n", "\n", ". ", " ", ""],
     )
@@ -170,8 +170,8 @@ from streamlit_option_menu import option_menu
 with st.sidebar:
     selected = option_menu(
         menu_title=None,
-        options=["Home", "Search", "Examples", "Explore Chunks", "About"],
-        icons=["house", "search", "lightbulb", "boxes", "info-circle"],
+        options=["Home", "Search", "Explore Chunks", "About"],
+        icons=["house", "search", "boxes", "info-circle"],
         default_index=0,
     )
 
@@ -340,36 +340,7 @@ elif page == "About":
     - Embedding model: sentence-transformers/paraphrase-MiniLM-L3-v2  
     - Vector database: ChromaDB  
     - Chunking method: RecursiveCharacterTextSplitter  
-    - Chunk size: 600  
+    - Chunk size: 500  
     - Chunk overlap: 50  
     """)
 
-
-# ──────────────────────────────────────────────────────────────────────
-# EXAMPLES PAGE
-# ──────────────────────────────────────────────────────────────────────
-elif page == "Examples":
-    st.title("Try Example Queries")
-
-    st.markdown("Click a question to test the search system:")
-
-    example_queries = [
-        "What is the best time for hiking in Slovenia?",
-        "Why is Slovenia a good hiking destination?",
-        "How do the Julian Alps differ from the Karawanks?",
-        "What safety risks should hikers consider?",
-        "What does the Knafelc waymark mean?"
-    ]
-
-    vector_store, chunks = build_vector_store(tuple(DOCUMENTS))
-
-    for q in example_queries:
-        if st.button(q):
-            results = vector_store.similarity_search_with_score(q, k=3)
-
-            st.subheader("Results")
-            for i, (doc, score) in enumerate(results, 1):
-                similarity = max(0, 1 - score)
-                st.markdown(f"**Result {i} — {similarity:.2f}**")
-                st.write(doc.page_content)
-                st.divider()
