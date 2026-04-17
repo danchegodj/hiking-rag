@@ -112,12 +112,6 @@ Equipment should match the difficulty and length of the route. Basic preparation
 
 Good equipment does not replace experience or careful route planning, but it can reduce fatigue and lower the risk of slipping or injury.""",
 
-
-    """Water in Slovenia is generally abundant and of high quality. Tap water is safe to drink throughout the country, and hikers in lower areas may also encounter springs or water troughs that are commonly used as reliable water sources. Some hikers prefer to use a portable filter when drinking from open natural sources.
-
-Food is an important part of the hiking experience. In many regions, hikers can find traditional Slovenian dishes near hiking areas, while mountain huts typically serve simple, hearty meals such as stews.
-
-High-alpine hut-to-hut hikes require more careful planning for both water and food logistics. Surface water is limited at higher elevations because of porous limestone terrain, so hikers may need to buy bottled water at huts or carry larger reserves themselves."""
 ]
 
 
@@ -129,28 +123,33 @@ High-alpine hut-to-hut hikes require more careful planning for both water and fo
 @st.cache_resource(show_spinner="Loading embedding model...")
 def load_embedding_model():
     from langchain_huggingface import HuggingFaceEmbeddings
-    return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    return HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L3-v2")
 
 
-@st.cache_resource(show_spinner="Building vector database...")
-def build_vector_store(_documents: tuple):
-    """Chunk documents, embed them, and store in ChromaDB."""
+@st.cache_resource(show_spinner="Splitting documents into chunks...")
+def build_chunks(_documents: tuple):
     from langchain_text_splitters import RecursiveCharacterTextSplitter
-    from langchain_community.vectorstores import Chroma
 
-    # --- Chunking ---
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
+        chunk_size=600,
         chunk_overlap=50,
         separators=["\n\n", "\n", ". ", " ", ""],
     )
+
     chunks = []
     for doc in _documents:
         chunks.extend(splitter.split_text(doc))
 
+    return chunks
+
+
+@st.cache_resource(show_spinner="Building vector database...")
+def build_vector_store(_documents: tuple):
+    from langchain_community.vectorstores import Chroma
+
+    chunks = build_chunks(_documents)
     embeddings = load_embedding_model()
 
-    # --- Store in ChromaDB ---
     vector_store = Chroma.from_texts(
         texts=chunks,
         embedding=embeddings,
@@ -179,7 +178,6 @@ with st.sidebar:
 page = selected
 
 
-
 # ──────────────────────────────────────────────────────────────────────
 # HOME PAGE
 # ──────────────────────────────────────────────────────────────────────
@@ -199,7 +197,7 @@ if page == "Home":
         - Major hiking regions such as the Julian Alps, Karawanks, and Kamnik-Savinja Alps  
         - Best seasons for different hiking types  
         - Safety, navigation, and trail markings  
-        - Hut-to-hut hiking, wine-region walks, and long-distance trails  
+        - Hut-to-hut hiking and long-distance trails  
         """)
 
         st.success("Start exploring → Open the **Search** page and ask your question.")
@@ -211,7 +209,6 @@ if page == "Home":
     st.caption("Built with Streamlit, LangChain, and ChromaDB")
 
     st.info(f"Knowledge base contains **{len(DOCUMENTS)} documents**.")
-
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -268,9 +265,7 @@ elif page == "Search":
                 </div>
                 """,
                 unsafe_allow_html=True
-            )        
-    
-
+            )
 
     stat1, stat2, stat3 = st.columns(3)
     stat1.metric("Documents", len(DOCUMENTS))
@@ -278,7 +273,7 @@ elif page == "Search":
     stat3.metric("Query length", len(query) if query else 0)
 
     st.markdown("---")
-    st.caption("Powered by all-MiniLM-L6-v2 embeddings + ChromaDB")
+    st.caption("Powered by paraphrase-MiniLM-L3-v2 embeddings + ChromaDB")
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -288,7 +283,7 @@ elif page == "Explore Chunks":
     st.title("Explore Chunks")
     st.markdown("See how your documents are split into chunks by the recursive text splitter.")
 
-    vector_store, chunks = build_vector_store(tuple(DOCUMENTS))
+    chunks = build_chunks(tuple(DOCUMENTS))
 
     st.metric("Total chunks", len(chunks))
 
@@ -317,6 +312,7 @@ elif page == "Explore Chunks":
         with st.expander(f"Chunk {i} ({len(chunk)} chars)"):
             st.text(chunk)
 
+
 # ──────────────────────────────────────────────────────────────────────
 # ABOUT PAGE
 # ──────────────────────────────────────────────────────────────────────
@@ -334,25 +330,24 @@ elif page == "About":
 
     ### How it works
     This app lets you **search documents by meaning**, not just keywords.
-    1. **Documents** are split into small chunks
+    1. **Documents** are split into chunks
     2. Each chunk is converted to an **embedding** (a vector of numbers)
     3. Chunks are stored in a **vector database** (ChromaDB)
     4. When you search, your query is embedded and compared to all chunks
     5. The most **semantically similar** chunks are returned
 
     ### Technical setup
-    - Embedding model: all-MiniLM-L6-v2  
+    - Embedding model: sentence-transformers/paraphrase-MiniLM-L3-v2  
     - Vector database: ChromaDB  
     - Chunking method: RecursiveCharacterTextSplitter  
-    - Chunk size: 500  
+    - Chunk size: 600  
     - Chunk overlap: 50  
     """)
 
-    
+
 # ──────────────────────────────────────────────────────────────────────
 # EXAMPLES PAGE
 # ──────────────────────────────────────────────────────────────────────
-
 elif page == "Examples":
     st.title("Try Example Queries")
 
