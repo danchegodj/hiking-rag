@@ -490,13 +490,6 @@ if page == "Home":
     st.markdown("---")
     st.caption("Built with Streamlit, LangChain, and ChromaDB")
 
-    vector_store, chunks = build_vector_store(tuple(DOCUMENTS))
-
-    col3, col4, col5 = st.columns(3)
-    col3.metric("Documents", len(DOCUMENTS))
-    col4.metric("Chunk size", 500)
-    col5.metric("Chunk overlap", 50)
-
     st.info(f"Knowledge base contains **{len(DOCUMENTS)} documents**.")
 
 
