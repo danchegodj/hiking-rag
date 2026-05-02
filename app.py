@@ -573,10 +573,11 @@ around mountain huts after each day's stage.""",
 # ──────────────────────────────────────────────────────────────────────
 # CACHED RESOURCES
 # ──────────────────────────────────────────────────────────────────────
+
 @st.cache_resource(show_spinner="Loading embedding model…")
 def load_embedding_model():
-    from langchain_huggingface import HuggingFaceEmbeddings
-    return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    from langchain_community.embeddings import FastEmbedEmbeddings
+    return FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
 
 
 @st.cache_resource(show_spinner="Building vector database…")
@@ -808,7 +809,7 @@ elif page == "Examples":
     for icon, q in example_queries:
         if st.button(f"{icon}  {q}", use_container_width=True):
             results = vector_store.similarity_search_with_score(q, k=3)
-            st.markdown(f"<p style='color:#0097a7; font-size:0.82rem; margin:0.5rem 0 1rem;'>Results for <strong>\"{q}\"</strong></p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='color:#0097a7; font-size:0.82rem; margin:0.5rem 0 1rem;'>Results for <strong>/{q}/</strong></p>", unsafe_allow_html=True)
             for i, (doc, score) in enumerate(results, 1):
                 similarity = max(0, 1 - score)
                 bar_w = int(similarity * 100)
