@@ -1,6 +1,6 @@
 """
 Hiking in Slovenia — RAG Knowledge Base
-Streamlit + LangChain + ChromaDB
+Streamlit + LangChain + scikit-learn TF-IDF
 """
 
 import streamlit as st
@@ -13,408 +13,65 @@ st.set_page_config(
 )
 
 # ──────────────────────────────────────────────────────────────────────
-# GLOBAL STYLES
+# BASE STYLES  (sidebar, metrics, buttons, inputs — used on every page)
+# No external font imports — system font stack only
 # ──────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,700;0,900;1,700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap');
-
-/* ─── Palette
-   --tq-dark   : #0a3d52   deep ocean
-   --tq-mid    : #0097a7   turquoise
-   --tq-bright : #00bcd4   bright cyan-turquoise
-   --tq-light  : #b2ebf2   pale turquoise
-   --tq-xlight : #e0f7fa   near-white turquoise
-   --tq-ink    : #062030   text on light
-─── */
-
 html, body, [class*="css"] {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
     background-color: #f5fcfe;
 }
-.block-container {
-    padding: 1.2rem 2.5rem 2rem;
-    max-width: 1100px;
-}
+.block-container { padding: 1.2rem 2.5rem 2rem; max-width: 1100px; }
 
-/* scrollbar */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: #e0f7fa; }
 ::-webkit-scrollbar-thumb { background: #0097a7; border-radius: 4px; }
 
-/* ── Sidebar ── */
 [data-testid="stSidebar"] {
     background: #ffffff !important;
     border-right: 1px solid #b2ebf2 !important;
 }
 [data-testid="stSidebar"] * { color: #062030 !important; }
-[data-testid="stSidebar"] .sidebar-brand {
-    font-family: 'Fraunces', serif;
-    font-size: 1.2rem;
-    color: #062030 !important;
-    letter-spacing: 0.01em;
-}
 [data-testid="stSidebar"] hr { border-color: #b2ebf2 !important; }
 
-/* ── Metrics ── */
 div[data-testid="stMetric"] {
     background: linear-gradient(135deg, #e0f7fa 0%, #f0fcfe 100%);
     border: 1px solid #b2ebf2;
     border-left: 4px solid #00bcd4;
     padding: 14px 16px;
     border-radius: 12px;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-div[data-testid="stMetric"]:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(0,188,212,0.18);
-}
-div[data-testid="stMetric"] label {
-    color: #0097a7 !important;
-    font-weight: 600;
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-}
-div[data-testid="stMetricValue"] > div {
-    color: #062030 !important;
-    font-family: 'Fraunces', serif;
-    font-size: 1.9rem !important;
-}
+div[data-testid="stMetric"] label { color: #0097a7 !important; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; }
+div[data-testid="stMetricValue"] > div { color: #062030 !important; font-size: 1.9rem !important; font-family: Georgia, serif; }
 
-/* ── Buttons ── */
 .stButton > button {
-    background: #0a3d52 !important;
-    color: #e0f7fa !important;
-    border: none !important;
-    border-radius: 10px !important;
-    padding: 0.5rem 1.2rem !important;
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
-    font-weight: 500 !important;
-    letter-spacing: 0.02em;
+    background: #0a3d52 !important; color: #e0f7fa !important;
+    border: none !important; border-radius: 10px !important;
+    padding: 0.5rem 1.2rem !important; font-weight: 500 !important;
     transition: all 0.2s ease !important;
 }
 .stButton > button:hover {
     background: #0097a7 !important;
-    transform: translateY(-2px) !important;
     box-shadow: 0 6px 16px rgba(0,151,167,0.35) !important;
 }
 
-/* ── Text input ── */
 .stTextInput > div > div > input {
-    border: 1.5px solid #b2ebf2 !important;
-    border-radius: 12px !important;
-    padding: 0.65rem 1rem !important;
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
-    background: #f5fcfe !important;
-    color: #062030 !important;
-    transition: border-color 0.2s, box-shadow 0.2s !important;
+    border: 1.5px solid #b2ebf2 !important; border-radius: 12px !important;
+    padding: 0.65rem 1rem !important; background: #f5fcfe !important; color: #062030 !important;
 }
 .stTextInput > div > div > input:focus {
     border-color: #00bcd4 !important;
     box-shadow: 0 0 0 3px rgba(0,188,212,0.15) !important;
 }
 
-/* ── Expander ── */
-details {
-    border: 1px solid #b2ebf2 !important;
-    border-radius: 12px !important;
-    background: #f5fcfe !important;
-    margin-bottom: 8px !important;
-    transition: box-shadow 0.2s ease;
-}
-details:hover { box-shadow: 0 2px 12px rgba(0,188,212,0.12) !important; }
-details summary {
-    padding: 10px 14px !important;
-    font-weight: 500 !important;
-    color: #0a3d52 !important;
-    cursor: pointer !important;
-}
+details { border: 1px solid #b2ebf2 !important; border-radius: 12px !important; background: #f5fcfe !important; margin-bottom: 8px !important; }
+details summary { padding: 10px 14px !important; font-weight: 500 !important; color: #0a3d52 !important; cursor: pointer !important; }
 
-/* ── Info / success boxes ── */
-[data-testid="stInfo"] {
-    background: #e0f7fa !important;
-    border-left: 4px solid #00bcd4 !important;
-    border-radius: 10px !important;
-    color: #062030 !important;
-}
-[data-testid="stSuccess"] {
-    background: #ccf5f8 !important;
-    border-left: 4px solid #0097a7 !important;
-    border-radius: 10px !important;
-    color: #062030 !important;
-}
-
-/* ── Divider ── */
 hr { border-color: #b2ebf2 !important; margin: 1.5rem 0 !important; }
 
-/* ── Page fade-in ── */
-.main .block-container { animation: fadeUp 0.4s ease both; }
-@keyframes fadeUp {
-    from { opacity: 0; transform: translateY(12px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ─── HOME: hero image wrapper with overlay ─── */
-.hero-wrapper {
-    position: relative;
-    border-radius: 20px;
-    overflow: hidden;
-    margin-bottom: 0;
-}
-.hero-wrapper img { display: block; width: 100%; }
-.hero-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-        135deg,
-        rgba(6,32,48,0.82) 0%,
-        rgba(0,97,107,0.55) 55%,
-        rgba(0,188,212,0.15) 100%
-    );
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    padding: 2.5rem 2.8rem;
-}
-.hero-chip {
-    display: inline-block;
-    background: rgba(0,188,212,0.28);
-    border: 1px solid rgba(0,188,212,0.6);
-    color: #b2ebf2;
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    padding: 4px 12px;
-    border-radius: 30px;
-    margin-bottom: 0.75rem;
-    backdrop-filter: blur(4px);
-    width: fit-content;
-}
-.hero-h1 {
-    font-family: 'Fraunces', serif;
-    font-size: clamp(2.4rem, 5.5vw, 3.8rem);
-    font-weight: 900;
-    color: #ffffff;
-    line-height: 1.05;
-    letter-spacing: -0.02em;
-    margin: 0 0 0.5rem;
-    text-shadow: 0 2px 20px rgba(0,0,0,0.4);
-}
-.hero-tagline {
-    font-size: 1rem;
-    color: #b2ebf2;
-    font-weight: 300;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin: 0 0 1.4rem;
-}
-.hero-cta {
-    display: inline-block;
-    background: #00bcd4;
-    color: #062030;
-    font-size: 0.82rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    padding: 10px 22px;
-    border-radius: 30px;
-    width: fit-content;
-    box-shadow: 0 4px 20px rgba(0,188,212,0.45);
-}
-
-/* ─── HOME: stats ribbon ─── */
-.stats-ribbon {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    background: #0a3d52;
-    border-radius: 0 0 20px 20px;
-    overflow: hidden;
-    margin-bottom: 2rem;
-}
-.stat-cell {
-    text-align: center;
-    padding: 16px 8px;
-    border-right: 1px solid #0e5570;
-}
-.stat-cell:last-child { border-right: none; }
-.stat-val {
-    font-family: 'Fraunces', serif;
-    font-size: 1.6rem;
-    font-weight: 900;
-    color: #00bcd4;
-    line-height: 1;
-    margin-bottom: 2px;
-}
-.stat-lbl {
-    font-size: 0.66rem;
-    color: #80d0dc;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    font-weight: 500;
-}
-
-/* ─── HOME: feature cards ─── */
-.feat-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-    margin-bottom: 1.4rem;
-}
-.feat-card {
-    background: #ffffff;
-    border: 1px solid #b2ebf2;
-    border-radius: 14px;
-    padding: 20px 18px;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    position: relative;
-    overflow: hidden;
-}
-.feat-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #00bcd4, #0097a7);
-}
-.feat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 28px rgba(0,188,212,0.16);
-}
-.feat-icon {
-    font-size: 1.6rem;
-    margin-bottom: 10px;
-    display: block;
-}
-.feat-title {
-    font-family: 'Fraunces', serif;
-    font-size: 1rem;
-    font-weight: 700;
-    color: #0a3d52;
-    margin-bottom: 5px;
-}
-.feat-desc {
-    font-size: 0.82rem;
-    color: #4a7a8a;
-    line-height: 1.55;
-    margin: 0;
-}
-
-/* ─── HOME: CTA banner ─── */
-.cta-banner {
-    background: linear-gradient(135deg, #0a3d52 0%, #0097a7 100%);
-    border-radius: 16px;
-    padding: 22px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-}
-.cta-text {
-    font-family: 'Fraunces', serif;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #e0f7fa;
-    margin: 0;
-}
-.cta-sub {
-    font-size: 0.82rem;
-    color: #80d0dc;
-    margin: 4px 0 0;
-}
-.cta-arrow {
-    font-size: 1.8rem;
-    color: #00bcd4;
-    flex-shrink: 0;
-}
-
-/* ── Search result card ── */
-.result-card {
-    border: 1px solid #b2ebf2;
-    border-left: 5px solid #00bcd4;
-    border-radius: 12px;
-    padding: 18px 20px;
-    margin-bottom: 14px;
-    background: linear-gradient(135deg, #f5fcfe 0%, #e8f9fc 100%);
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
-    animation: fadeUp 0.3s ease both;
-}
-.result-card:hover {
-    transform: translateX(4px);
-    box-shadow: 0 4px 20px rgba(0,188,212,0.14);
-}
-.result-num {
-    font-family: 'Fraunces', serif;
-    font-size: 0.78rem;
-    color: #0097a7;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-}
-.result-score {
-    display: inline-block;
-    background: #e0f7fa;
-    color: #0097a7;
-    font-size: 0.72rem;
-    font-weight: 600;
-    padding: 2px 9px;
-    border-radius: 20px;
-    margin-bottom: 10px;
-    border: 1px solid #b2ebf2;
-}
-.result-text { color: #062030; font-size: 0.92rem; line-height: 1.7; margin: 0; }
-
-/* ── Gallery ── */
-.gallery-label {
-    font-family: 'Fraunces', serif;
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: #0a3d52;
-    padding: 10px 0 6px;
-    border-bottom: 2px solid #00bcd4;
-    margin-bottom: 8px;
-}
-
-/* ── Section heading ── */
-.section-head {
-    font-family: 'Fraunces', serif;
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: #0a3d52;
-    margin-bottom: 0.2rem;
-}
-.section-rule {
-    height: 3px;
-    background: linear-gradient(90deg, #00bcd4, #b2ebf2 80%, transparent);
-    border: none; border-radius: 2px; margin-bottom: 1.2rem;
-}
-
-/* ── Pills ── */
-.pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem; }
-.pill {
-    background: #e0f7fa; color: #0097a7;
-    border: 1px solid #b2ebf2; border-radius: 20px;
-    padding: 4px 12px; font-size: 0.8rem; font-weight: 500;
-    cursor: pointer; white-space: nowrap;
-    transition: background 0.15s, color 0.15s;
-}
-.pill:hover { background: #00bcd4; color: #fff; }
-
-/* ── About steps ── */
-.about-step {
-    display: flex; align-items: flex-start; gap: 14px;
-    margin-bottom: 12px; padding: 12px 16px;
-    background: #f0fbfe; border-radius: 10px; border: 1px solid #b2ebf2;
-}
-.step-num {
-    background: #0a3d52; color: #b2ebf2;
-    font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 700;
-    min-width: 32px; height: 32px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-}
-.step-txt { font-size: 0.9rem; color: #062030; line-height: 1.5; }
+.main .block-container { animation: fadeUp 0.35s ease both; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 </style>
 """, unsafe_allow_html=True)
 
@@ -423,7 +80,7 @@ hr { border-color: #b2ebf2 !important; margin: 1.5rem 0 !important; }
 # DOCUMENTS
 # ──────────────────────────────────────────────────────────────────────
 DOCUMENTS = [
- 
+
     """Slovenia packs more than 10,000 kilometers of marked hiking trails
 into a remarkably compact country. Its location at the meeting point
 of the south-eastern Alps, the Adriatic area, and the Pannonian Plain
@@ -437,8 +94,8 @@ national flag carries a mountain symbol, forests cover nearly 60
 percent of the country, and outdoor recreation is part of everyday
 life. Visiting hikers benefit from well-maintained paths, clear
 signage, and a local population genuinely connected to its mountains.""",
- 
- 
+
+
     """The Julian Alps are Slovenia's most celebrated mountain range and
 home to its highest peak, Mount Triglav at 2,864 meters. The range
 is built almost entirely of ancient limestone and dolomite, and most
@@ -452,8 +109,8 @@ the southern slopes around Bohinj; more demanding north-to-south
 traversals include via ferrata sections. The Julian Alps offer the
 widest choice of alpine experiences in Slovenia and are the first
 destination most hikers visit.""",
- 
- 
+
+
     """The Karawanks stretch roughly 120 kilometers along the Slovenian-
 Austrian border, making them the longest mountain range in Slovenia.
 Their southern slopes are gentler and greener than the Julian Alps,
@@ -466,8 +123,8 @@ Bled. Mountain huts are fewer here than in the higher ranges, since
 most hikes can be completed in a single day. The Karawanks also form
 part of the Slovene Mountain Trail and the international Via Alpina
 long-distance routes.""",
- 
- 
+
+
     """The Kamnik-Savinja Alps run roughly 66 kilometers across central
 northern Slovenia and offer the country's most demanding mountain
 terrain. Few roads approach the higher trailheads, so many routes
@@ -480,8 +137,8 @@ visited on an easy valley walk. Velika Planina, a vast highland
 meadow with traditional wooden herdsman's huts, is popular with
 families and casual hikers. The Kamnik-Savinja Alps suit those who
 want a quieter, more remote experience than the Julian Alps provide.""",
- 
- 
+
+
     """Slovenia's best season for most hiking is late May through October,
 but the ideal window depends heavily on elevation and route type.
 May and June offer pleasant temperatures, blooming landscapes, and
@@ -494,8 +151,8 @@ color across the forests, including golden larches in the higher alpine
 zones, and is a favorite month for experienced hikers. Above the
 tree line, conditions can change quickly at any time of year, so
 checking weather forecasts before setting out is always important.""",
- 
- 
+
+
     """Slovenia's main hiking risks are environmental rather than related
 to crime. Mountain weather changes rapidly, trails can be physically
 demanding, and mobile coverage is unreliable in remote areas. Choosing
@@ -509,8 +166,8 @@ mountain rescue service is professional and well-regarded, but it is
 not a substitute for careful preparation. Petty theft from unattended
 cars at popular trailheads has been reported; do not leave valuables
 visible inside parked vehicles.""",
- 
- 
+
+
     """Slovenian trails are marked with the Knafelc waymark, a red circle
 on a white background applied to rocks, trees, and posts. This system
 is maintained by the Alpine Association of Slovenia and covers the
@@ -523,8 +180,8 @@ current trail conditions. On the trail, greeting other hikers is
 customary; a simple "Dober dan" (good day) or "živjo" (hello) is
 always appreciated and reflects Slovenian mountain culture. English
 is widely spoken in tourist areas.""",
- 
- 
+
+
     """Slovenia's wine-region hiking routes offer a completely different
 experience from alpine trails. Instead of steep ascents, the focus
 is on walking through vineyards and rural villages, visiting family
@@ -538,8 +195,8 @@ period. They offer an authentic glimpse into rural Slovenian life
 and show that the country is far more than alpine scenery alone.
 Prior planning and booking at local wineries is recommended during
 peak harvest weekends.""",
- 
- 
+
+
     """Slovenia has a well-developed long-distance hiking network. The
 Slovene Mountain Trail, established in 1953, covers 617 kilometers
 from Maribor through the Pohorje forests, across the Kamnik-Savinja
@@ -552,8 +209,8 @@ Via Dinarica passes through Slovenia for approximately 160 kilometers
 as part of a larger trans-Balkan route. Most long-distance routes can
 be split into independent day sections, and luggage transfer services
 are available on the more popular trails.""",
- 
- 
+
+
     """Water quality in Slovenia is excellent; tap water is safe everywhere
 and many lower-altitude trails have drinking springs or water troughs.
 At higher elevations, porous limestone means surface water is often
@@ -566,13 +223,13 @@ should account for rapid weather changes at altitude: a waterproof
 layer, insulation, and a sun hat are the core requirements regardless
 of the season. Multi-day hikers often carry light sandals for comfort
 around mountain huts after each day's stage.""",
- 
+
 ]
 
-# ──────────────────────────────────────────────────────────────────────
-# CACHED RESOURCES
-# ──────────────────────────────────────────────────────────────────────
 
+# ──────────────────────────────────────────────────────────────────────
+# VECTOR STORE  (TF-IDF + NumPy — no external API)
+# ──────────────────────────────────────────────────────────────────────
 class SimpleVectorStore:
     def __init__(self, chunks, matrix, vectorizer):
         self.chunks = chunks
@@ -594,7 +251,7 @@ class SimpleVectorStore:
         return [(Doc(self.chunks[i]), 1 - float(scores[i])) for i in top_k]
 
 
-@st.cache_resource(show_spinner="Building vector database…")
+@st.cache_resource(show_spinner="Building search index…")
 def build_vector_store(_documents: tuple):
     from langchain_text_splitters import RecursiveCharacterTextSplitter
     from sklearn.feature_extraction.text import TfidfVectorizer
@@ -609,7 +266,6 @@ def build_vector_store(_documents: tuple):
 
     vectorizer = TfidfVectorizer()
     matrix = vectorizer.fit_transform(chunks).toarray()
-
     return SimpleVectorStore(chunks, matrix, vectorizer), chunks
 
 
@@ -619,7 +275,11 @@ def build_vector_store(_documents: tuple):
 from streamlit_option_menu import option_menu
 
 with st.sidebar:
-    st.markdown('<div class="sidebar-brand">⛰️ Hiking in Slovenia</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<p style="font-family:Georgia,serif; font-size:1.1rem; font-weight:700; '
+        'color:#062030; margin:0 0 4px;">⛰️ Hiking in Slovenia</p>',
+        unsafe_allow_html=True,
+    )
     st.markdown('<hr>', unsafe_allow_html=True)
     selected = option_menu(
         menu_title=None,
@@ -630,24 +290,18 @@ with st.sidebar:
             "container": {"background-color": "transparent", "padding": "0"},
             "icon": {"color": "#0097a7", "font-size": "0.85rem"},
             "nav-link": {
-                "color": "#062030",
-                "font-size": "0.88rem",
-                "font-weight": "500",
-                "padding": "8px 12px",
-                "border-radius": "8px",
-                "margin-bottom": "2px",
+                "color": "#062030", "font-size": "0.88rem", "font-weight": "500",
+                "padding": "8px 12px", "border-radius": "8px", "margin-bottom": "2px",
             },
             "nav-link-selected": {
-                "background-color": "#e0f7fa",
-                "color": "#0a3d52",
-                "font-weight": "700",
+                "background-color": "#e0f7fa", "color": "#0a3d52", "font-weight": "700",
             },
         },
     )
     st.markdown('<hr>', unsafe_allow_html=True)
     st.markdown(
-        f'<div style="font-size:0.75rem; color:#0097a7; padding:4px 0;">'
-        f'📚 {len(DOCUMENTS)} documents · semantic search</div>',
+        f'<p style="font-size:0.75rem; color:#0097a7; margin:0;">'
+        f'📚 {len(DOCUMENTS)} documents · TF-IDF search</p>',
         unsafe_allow_html=True,
     )
 
@@ -659,122 +313,133 @@ page = selected
 # ──────────────────────────────────────────────────────────────────────
 if page == "Home":
 
-    # ── Plain text header ──
-    st.markdown('<div class="hero-chip" style="background:#e0f7fa; border:1px solid #b2ebf2; color:#0097a7;">⛰️ Semantic Search App</div>', unsafe_allow_html=True)
-    st.markdown('<h1 class="hero-h1" style="color:#0a3d52; text-shadow:none; margin-bottom:0.3rem;">Hiking in Slovenia</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="hero-tagline" style="color:#0097a7; margin-bottom:1rem;">10,000 km of trails &nbsp;·&nbsp; Alps &nbsp;·&nbsp; Forests &nbsp;·&nbsp; Wine hills</p>', unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+    .hero-chip {
+        display: inline-block;
+        background: #e0f7fa; border: 1px solid #b2ebf2; color: #0097a7;
+        font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em;
+        text-transform: uppercase; padding: 4px 12px; border-radius: 30px;
+        margin-bottom: 0.6rem;
+    }
+    .hero-h1 {
+        font-family: Georgia, Cambria, serif;
+        font-size: clamp(2.2rem, 5vw, 3.4rem);
+        font-weight: 700; color: #0a3d52; line-height: 1.1;
+        letter-spacing: -0.02em; margin: 0 0 0.3rem;
+    }
+    .hero-tagline {
+        font-size: 0.95rem; color: #0097a7; font-weight: 400;
+        letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 1rem;
+    }
+    .stats-ribbon {
+        display: grid; grid-template-columns: repeat(4, 1fr);
+        background: #0a3d52; border-radius: 0 0 16px 16px;
+        overflow: hidden; margin-bottom: 1.8rem;
+    }
+    .stat-cell { text-align: center; padding: 14px 8px; border-right: 1px solid #0e5570; }
+    .stat-cell:last-child { border-right: none; }
+    .stat-val { font-family: Georgia, serif; font-size: 1.5rem; font-weight: 700; color: #00bcd4; line-height: 1; margin-bottom: 2px; }
+    .stat-lbl { font-size: 0.63rem; color: #80d0dc; letter-spacing: 0.1em; text-transform: uppercase; }
+    .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.4rem; }
+    .feat-card {
+        background: #fff; border: 1px solid #b2ebf2; border-radius: 12px;
+        padding: 18px 16px; position: relative; overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .feat-card::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        background: linear-gradient(90deg, #00bcd4, #0097a7);
+    }
+    .feat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,188,212,0.14); }
+    .feat-icon { font-size: 1.5rem; margin-bottom: 8px; display: block; }
+    .feat-title { font-family: Georgia, serif; font-size: 0.95rem; font-weight: 700; color: #0a3d52; margin-bottom: 4px; }
+    .feat-desc { font-size: 0.8rem; color: #4a7a8a; line-height: 1.5; margin: 0; }
+    .cta-banner {
+        background: linear-gradient(135deg, #0a3d52 0%, #0097a7 100%);
+        border-radius: 14px; padding: 20px 26px;
+        display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .cta-text { font-family: Georgia, serif; font-size: 1.15rem; font-weight: 700; color: #e0f7fa; margin: 0; }
+    .cta-sub { font-size: 0.8rem; color: #80d0dc; margin: 3px 0 0; }
+    .cta-arrow { font-size: 1.6rem; color: #00bcd4; flex-shrink: 0; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="hero-chip">⛰️ Semantic Search App</div>', unsafe_allow_html=True)
+    st.markdown('<h1 class="hero-h1">Hiking in Slovenia</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="hero-tagline">10,000 km of trails &nbsp;·&nbsp; Alps &nbsp;·&nbsp; Forests &nbsp;·&nbsp; Wine hills</p>', unsafe_allow_html=True)
 
     st.image("image.jpg", use_container_width=True)
 
-    # ── Stats ribbon ──
     st.markdown("""
     <div class="stats-ribbon">
-        <div class="stat-cell">
-            <div class="stat-val">10K+</div>
-            <div class="stat-lbl">km of trails</div>
-        </div>
-        <div class="stat-cell">
-            <div class="stat-val">3</div>
-            <div class="stat-lbl">alpine ranges</div>
-        </div>
-        <div class="stat-cell">
-            <div class="stat-val">2864m</div>
-            <div class="stat-lbl">highest peak</div>
-        </div>
-        <div class="stat-cell">
-            <div class="stat-val">60%</div>
-            <div class="stat-lbl">forest cover</div>
-        </div>
+        <div class="stat-cell"><div class="stat-val">10K+</div><div class="stat-lbl">km of trails</div></div>
+        <div class="stat-cell"><div class="stat-val">3</div><div class="stat-lbl">alpine ranges</div></div>
+        <div class="stat-cell"><div class="stat-val">2864m</div><div class="stat-lbl">highest peak</div></div>
+        <div class="stat-cell"><div class="stat-val">60%</div><div class="stat-lbl">forest cover</div></div>
     </div>
-    """, unsafe_allow_html=True)
-
-    # ── Feature cards ──
-    st.markdown("""
     <div class="feat-grid">
-        <div class="feat-card">
-            <span class="feat-icon">🏔️</span>
-            <div class="feat-title">Mountain Ranges</div>
-            <p class="feat-desc">Julian Alps, Karawanks, and the wild Kamnik-Savinja Alps — three distinct alpine worlds in one compact country.</p>
-        </div>
-        <div class="feat-card">
-            <span class="feat-icon">🗓️</span>
-            <div class="feat-title">Seasons & Timing</div>
-            <p class="feat-desc">Best windows for alpine huts, daffodil blooms, harvest walks, and golden autumn larches.</p>
-        </div>
-        <div class="feat-card">
-            <span class="feat-icon">🧭</span>
-            <div class="feat-title">Navigation & Safety</div>
-            <p class="feat-desc">Knafelc waymarks, Sidarta maps, digital tools, and mountain rescue essentials explained.</p>
-        </div>
-        <div class="feat-card">
-            <span class="feat-icon">🍷</span>
-            <div class="feat-title">Beyond the Alps</div>
-            <p class="feat-desc">Wine-region walks through Goriška Brda, Vipava, and Karst vineyards with tastings en route.</p>
-        </div>
-        <div class="feat-card">
-            <span class="feat-icon">🥾</span>
-            <div class="feat-title">Long-Distance Trails</div>
-            <p class="feat-desc">Slovene Mountain Trail, Alpe Adria, Via Dinarica, and the Juliana Trail around Triglav.</p>
-        </div>
-        <div class="feat-card">
-            <span class="feat-icon">🍽️</span>
-            <div class="feat-title">Food & Water</div>
-            <p class="feat-desc">Mountain hut cuisine, tap water safety, spring sources, and logistics for hut-to-hut routes.</p>
-        </div>
+        <div class="feat-card"><span class="feat-icon">🏔️</span><div class="feat-title">Mountain Ranges</div><p class="feat-desc">Julian Alps, Karawanks, and the wild Kamnik-Savinja Alps — three distinct alpine worlds.</p></div>
+        <div class="feat-card"><span class="feat-icon">🗓️</span><div class="feat-title">Seasons & Timing</div><p class="feat-desc">Best windows for alpine huts, daffodil blooms, harvest walks, and golden autumn larches.</p></div>
+        <div class="feat-card"><span class="feat-icon">🧭</span><div class="feat-title">Navigation & Safety</div><p class="feat-desc">Knafelc waymarks, Sidarta maps, digital tools, and mountain rescue essentials.</p></div>
+        <div class="feat-card"><span class="feat-icon">🍷</span><div class="feat-title">Beyond the Alps</div><p class="feat-desc">Wine-region walks through Goriška Brda, Vipava, and Karst vineyards.</p></div>
+        <div class="feat-card"><span class="feat-icon">🥾</span><div class="feat-title">Long-Distance Trails</div><p class="feat-desc">Slovene Mountain Trail, Alpe Adria, Via Dinarica, and the Juliana Trail.</p></div>
+        <div class="feat-card"><span class="feat-icon">🍽️</span><div class="feat-title">Food & Water</div><p class="feat-desc">Mountain hut cuisine, tap water safety, springs, and hut-to-hut logistics.</p></div>
     </div>
-    """, unsafe_allow_html=True)
-
-    # ── CTA banner ──
-    st.markdown("""
     <div class="cta-banner">
-        <div>
-            <p class="cta-text">Ready to explore Slovenia's trails?</p>
-            <p class="cta-sub">Open the Search page and ask anything about hiking in Slovenia.</p>
-        </div>
+        <div><p class="cta-text">Ready to explore Slovenia's trails?</p><p class="cta-sub">Open the Search page and ask anything about hiking in Slovenia.</p></div>
         <div class="cta-arrow">→</div>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
-    st.caption("Built with Streamlit · LangChain · ChromaDB · all-MiniLM-L6-v2")
+    st.caption("Built with Streamlit · LangChain · scikit-learn TF-IDF")
 
 
 # ──────────────────────────────────────────────────────────────────────
 # SEARCH
 # ──────────────────────────────────────────────────────────────────────
 elif page == "Search":
+
+    st.markdown("""
+    <style>
+    .section-head { font-family: Georgia, serif; font-size: 1.5rem; font-weight: 700; color: #0a3d52; margin-bottom: 0.2rem; }
+    .section-rule { height: 3px; background: linear-gradient(90deg, #00bcd4, #b2ebf2 80%, transparent); border: none; border-radius: 2px; margin-bottom: 1.2rem; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem; }
+    .pill { background: #e0f7fa; color: #0097a7; border: 1px solid #b2ebf2; border-radius: 20px; padding: 4px 12px; font-size: 0.78rem; font-weight: 500; white-space: nowrap; }
+    .result-card { border: 1px solid #b2ebf2; border-left: 5px solid #00bcd4; border-radius: 12px; padding: 16px 18px; margin-bottom: 12px; background: linear-gradient(135deg, #f5fcfe 0%, #e8f9fc 100%); }
+    .result-num { font-family: Georgia, serif; font-size: 0.75rem; color: #0097a7; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 5px; }
+    .result-score { display: inline-block; background: #e0f7fa; color: #0097a7; font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-bottom: 8px; border: 1px solid #b2ebf2; }
+    .result-text { color: #062030; font-size: 0.9rem; line-height: 1.7; margin: 0; }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.markdown('<h2 class="section-head">🔎 Search</h2><div class="section-rule"></div>', unsafe_allow_html=True)
 
     vector_store, chunks = build_vector_store(tuple(DOCUMENTS))
 
-    # Quick-search pills
     st.markdown("""
     <div class="pill-row">
-      <span class="pill" onclick="void(0)">Best time to hike</span>
-      <span class="pill">Julian Alps vs Karawanks</span>
-      <span class="pill">Safety risks</span>
-      <span class="pill">Hut-to-hut routes</span>
-      <span class="pill">Wine-region walks</span>
-      <span class="pill">Knafelc waymark</span>
+        <span class="pill">Best time to hike</span>
+        <span class="pill">Julian Alps vs Karawanks</span>
+        <span class="pill">Safety risks</span>
+        <span class="pill">Hut-to-hut routes</span>
+        <span class="pill">Wine-region walks</span>
+        <span class="pill">Knafelc waymark</span>
     </div>
     """, unsafe_allow_html=True)
 
     col_q, col_n = st.columns([4, 1])
     with col_q:
-        query = st.text_input(
-            "",
-            placeholder="Ask anything about hiking in Slovenia…",
-            label_visibility="collapsed",
-        )
+        query = st.text_input("", placeholder="Ask anything about hiking in Slovenia…", label_visibility="collapsed")
     with col_n:
         num_results = st.slider("Results", 1, 8, 3, label_visibility="collapsed")
 
     if query:
-        with st.spinner("Searching knowledge base…"):
+        with st.spinner("Searching…"):
             results = vector_store.similarity_search_with_score(query, k=num_results)
-
-        st.markdown(f"<p style='color:#0097a7; font-size:0.82rem; margin-bottom:1rem;'>Showing {len(results)} results for <strong>&ldquo;{query}&rdquo;</strong></p>", unsafe_allow_html=True)
-
+        st.markdown(f"<p style='color:#0097a7; font-size:0.8rem; margin-bottom:1rem;'>Showing {len(results)} results for <strong>&ldquo;{query}&rdquo;</strong></p>", unsafe_allow_html=True)
         for i, (doc, score) in enumerate(results, 1):
             similarity = max(0, 1 - score)
             bar_w = int(similarity * 100)
@@ -782,8 +447,8 @@ elif page == "Search":
                 f"""<div class="result-card">
                     <div class="result-num">Result {i}</div>
                     <div class="result-score">⬆ {similarity:.0%} match</div>
-                    <div style="height:3px; background:#e0f7fa; border-radius:2px; margin-bottom:12px;">
-                        <div style="height:3px; width:{bar_w}%; background:linear-gradient(90deg,#0097a7,#00e5ff); border-radius:2px;"></div>
+                    <div style="height:3px;background:#e0f7fa;border-radius:2px;margin-bottom:10px;">
+                        <div style="height:3px;width:{bar_w}%;background:linear-gradient(90deg,#0097a7,#00e5ff);border-radius:2px;"></div>
                     </div>
                     <p class="result-text">{doc.page_content}</p>
                 </div>""",
@@ -791,8 +456,8 @@ elif page == "Search":
             )
     else:
         st.markdown(
-            '<div style="padding:32px; text-align:center; color:#0097a7; font-size:0.9rem; '
-            'background:#e0f7fa; border-radius:12px; border:1px dashed #b2ebf2;">'
+            '<div style="padding:28px;text-align:center;color:#0097a7;font-size:0.9rem;'
+            'background:#e0f7fa;border-radius:12px;border:1px dashed #b2ebf2;">'
             '⛰️ Type a question above to search the knowledge base</div>',
             unsafe_allow_html=True,
         )
@@ -808,6 +473,18 @@ elif page == "Search":
 # EXAMPLES
 # ──────────────────────────────────────────────────────────────────────
 elif page == "Examples":
+
+    st.markdown("""
+    <style>
+    .section-head { font-family: Georgia, serif; font-size: 1.5rem; font-weight: 700; color: #0a3d52; margin-bottom: 0.2rem; }
+    .section-rule { height: 3px; background: linear-gradient(90deg, #00bcd4, #b2ebf2 80%, transparent); border: none; border-radius: 2px; margin-bottom: 1.2rem; }
+    .result-card { border: 1px solid #b2ebf2; border-left: 5px solid #00bcd4; border-radius: 12px; padding: 16px 18px; margin-bottom: 12px; background: linear-gradient(135deg, #f5fcfe 0%, #e8f9fc 100%); }
+    .result-num { font-family: Georgia, serif; font-size: 0.75rem; color: #0097a7; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 5px; }
+    .result-score { display: inline-block; background: #e0f7fa; color: #0097a7; font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-bottom: 8px; border: 1px solid #b2ebf2; }
+    .result-text { color: #062030; font-size: 0.9rem; line-height: 1.7; margin: 0; }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.markdown('<h2 class="section-head">⚡ Example Queries</h2><div class="section-rule"></div>', unsafe_allow_html=True)
     st.markdown("Click any question to run it instantly against the knowledge base.")
 
@@ -824,7 +501,7 @@ elif page == "Examples":
     for icon, q in example_queries:
         if st.button(f"{icon}  {q}", use_container_width=True):
             results = vector_store.similarity_search_with_score(q, k=3)
-            st.markdown(f"<p style='color:#0097a7; font-size:0.82rem; margin:0.5rem 0 1rem;'>Results for <strong>&ldquo;{q}&rdquo;</strong></p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='color:#0097a7; font-size:0.8rem; margin:0.5rem 0 1rem;'>Results for <strong>&ldquo;{q}&rdquo;</strong></p>", unsafe_allow_html=True)
             for i, (doc, score) in enumerate(results, 1):
                 similarity = max(0, 1 - score)
                 bar_w = int(similarity * 100)
@@ -832,8 +509,8 @@ elif page == "Examples":
                     f"""<div class="result-card">
                         <div class="result-num">Result {i}</div>
                         <div class="result-score">⬆ {similarity:.0%} match</div>
-                        <div style="height:3px; background:#e0f7fa; border-radius:2px; margin-bottom:12px;">
-                            <div style="height:3px; width:{bar_w}%; background:linear-gradient(90deg,#0097a7,#00e5ff); border-radius:2px;"></div>
+                        <div style="height:3px;background:#e0f7fa;border-radius:2px;margin-bottom:10px;">
+                            <div style="height:3px;width:{bar_w}%;background:linear-gradient(90deg,#0097a7,#00e5ff);border-radius:2px;"></div>
                         </div>
                         <p class="result-text">{doc.page_content}</p>
                     </div>""",
@@ -845,19 +522,28 @@ elif page == "Examples":
 # GALLERY
 # ──────────────────────────────────────────────────────────────────────
 elif page == "Gallery":
+
+    st.markdown("""
+    <style>
+    .section-head { font-family: Georgia, serif; font-size: 1.5rem; font-weight: 700; color: #0a3d52; margin-bottom: 0.2rem; }
+    .section-rule { height: 3px; background: linear-gradient(90deg, #00bcd4, #b2ebf2 80%, transparent); border: none; border-radius: 2px; margin-bottom: 1.2rem; }
+    .gallery-label { font-family: Georgia, serif; font-size: 0.92rem; font-weight: 700; color: #0a3d52; padding: 8px 0 5px; border-bottom: 2px solid #00bcd4; margin-bottom: 6px; }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.markdown('<h2 class="section-head">🖼️ Destination Gallery</h2><div class="section-rule"></div>', unsafe_allow_html=True)
     st.markdown("A visual tour through Slovenia's most remarkable hiking landscapes.")
 
     gallery_items = [
-        ("triglav.jpg",       "Mount Triglav",         "The highest peak in Slovenia and a symbol of national identity."),
-        ("bohinj.jpg",        "Lake Bohinj",           "An alpine lake surrounded by the Julian Alps and forest trails."),
-        ("soca.jpg",          "Soča River",            "Famous for its emerald color and scenic hiking paths."),
-        ("velika_planina.jpg","Velika Planina",         "A vast alpine meadow with traditional shepherd huts."),
-        ("logar_valley.jpg",  "Logar Valley",          "One of the most beautiful glacial valleys in Slovenia."),
-        ("karawanks.jpg",     "Karawanks",             "A long range with accessible and scenic ridge trails."),
-        ("kamnik_alps.jpg",   "Kamnik–Savinja Alps",   "A wilder and more demanding alpine hiking region."),
-        ("pohorje.jpg",       "Pohorje",               "Forest-covered hills ideal for relaxed local hiking."),
-        ("brda.jpg",          "Goriška Brda",          "Rolling wine hills combining hiking with food and wine culture."),
+        ("triglav.jpg",        "Mount Triglav",       "The highest peak in Slovenia and a symbol of national identity."),
+        ("bohinj.jpg",         "Lake Bohinj",         "An alpine lake surrounded by the Julian Alps and forest trails."),
+        ("soca.jpg",           "Soča River",          "Famous for its emerald color and scenic hiking paths."),
+        ("velika_planina.jpg", "Velika Planina",       "A vast alpine meadow with traditional shepherd huts."),
+        ("logar_valley.jpg",   "Logar Valley",        "One of the most beautiful glacial valleys in Slovenia."),
+        ("karawanks.jpg",      "Karawanks",           "A long range with accessible and scenic ridge trails."),
+        ("kamnik_alps.jpg",    "Kamnik–Savinja Alps", "A wilder and more demanding alpine hiking region."),
+        ("pohorje.jpg",        "Pohorje",             "Forest-covered hills ideal for relaxed local hiking."),
+        ("brda.jpg",           "Goriška Brda",        "Rolling wine hills combining hiking with food and wine culture."),
     ]
 
     col1, col2, col3 = st.columns(3)
@@ -867,10 +553,7 @@ elif page == "Gallery":
         with cols[i % 3]:
             st.markdown(f'<div class="gallery-label">📍 {title}</div>', unsafe_allow_html=True)
             st.image(filename, use_container_width=True)
-            st.markdown(
-                f'<p style="font-size:0.8rem; color:#5a7a5a; margin-top:4px; margin-bottom:18px;">{caption_text}</p>',
-                unsafe_allow_html=True,
-            )
+            st.markdown(f'<p style="font-size:0.78rem;color:#4a7a8a;margin-top:3px;margin-bottom:16px;">{caption_text}</p>', unsafe_allow_html=True)
 
     st.markdown("---")
     st.caption("All destinations are located in Slovenia.")
@@ -880,8 +563,16 @@ elif page == "Gallery":
 # EXPLORE CHUNKS
 # ──────────────────────────────────────────────────────────────────────
 elif page == "Explore Chunks":
+
+    st.markdown("""
+    <style>
+    .section-head { font-family: Georgia, serif; font-size: 1.5rem; font-weight: 700; color: #0a3d52; margin-bottom: 0.2rem; }
+    .section-rule { height: 3px; background: linear-gradient(90deg, #00bcd4, #b2ebf2 80%, transparent); border: none; border-radius: 2px; margin-bottom: 1.2rem; }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.markdown('<h2 class="section-head">🗂️ Explore Chunks</h2><div class="section-rule"></div>', unsafe_allow_html=True)
-    st.markdown("Inspect how documents are split before embedding.")
+    st.markdown("Inspect how documents are split before vectorisation.")
 
     vector_store, chunks = build_vector_store(tuple(DOCUMENTS))
     lengths = [len(c) for c in chunks]
@@ -899,9 +590,10 @@ elif page == "Explore Chunks":
     keyword = st.text_input("🔍 Filter chunks by keyword", placeholder="e.g. Julian Alps")
     filtered = [c for c in chunks if keyword.lower() in c.lower()] if keyword else chunks
     st.markdown(
-        f'<p style="font-size:0.82rem; color:#0097a7; margin-bottom:0.8rem;">'
+        f'<p style="font-size:0.8rem;color:#0097a7;margin-bottom:0.8rem;">'
         f'Showing <strong>{len(filtered)}</strong> of {len(chunks)} chunks'
-        f'{"  ·  filtered by "" + keyword + """ if keyword else ""}</p>',
+        + (f' &nbsp;·&nbsp; filtered by &ldquo;{keyword}&rdquo;' if keyword else '')
+        + '</p>',
         unsafe_allow_html=True,
     )
     for i, chunk in enumerate(filtered, 1):
@@ -913,10 +605,21 @@ elif page == "Explore Chunks":
 # ABOUT
 # ──────────────────────────────────────────────────────────────────────
 elif page == "About":
+
+    st.markdown("""
+    <style>
+    .section-head { font-family: Georgia, serif; font-size: 1.5rem; font-weight: 700; color: #0a3d52; margin-bottom: 0.2rem; }
+    .section-rule { height: 3px; background: linear-gradient(90deg, #00bcd4, #b2ebf2 80%, transparent); border: none; border-radius: 2px; margin-bottom: 1.2rem; }
+    .about-step { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; padding: 11px 14px; background: #f0fbfe; border-radius: 10px; border: 1px solid #b2ebf2; }
+    .step-num { background: #0a3d52; color: #b2ebf2; font-family: Georgia, serif; font-size: 0.95rem; font-weight: 700; min-width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .step-txt { font-size: 0.88rem; color: #062030; line-height: 1.5; }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.markdown('<h2 class="section-head">ℹ️ About</h2><div class="section-rule"></div>', unsafe_allow_html=True)
- 
+
     col_a, col_b = st.columns([3, 2])
- 
+
     with col_a:
         st.markdown("**What this app covers**")
         topics = [
@@ -928,8 +631,8 @@ elif page == "About":
             "Gear, water, food logistics, and local etiquette",
         ]
         for t in topics:
-            st.markdown(f'<div style="padding:6px 0; border-bottom:1px solid #b2ebf2; font-size:0.88rem; color:#062030;">▸ {t}</div>', unsafe_allow_html=True)
- 
+            st.markdown(f'<div style="padding:6px 0;border-bottom:1px solid #b2ebf2;font-size:0.86rem;color:#062030;">▸ {t}</div>', unsafe_allow_html=True)
+
     with col_b:
         st.markdown("**How it works**")
         steps = [
@@ -941,13 +644,10 @@ elif page == "About":
         ]
         for num, txt in steps:
             st.markdown(
-                f'<div class="about-step">'
-                f'<div class="step-num">{num}</div>'
-                f'<div class="step-txt">{txt}</div>'
-                f'</div>',
+                f'<div class="about-step"><div class="step-num">{num}</div><div class="step-txt">{txt}</div></div>',
                 unsafe_allow_html=True,
             )
- 
+
     st.markdown("---")
     col_t1, col_t2, col_t3 = st.columns(3)
     col_t1.markdown("**Embedding**  \nTF-IDF (scikit-learn)")
